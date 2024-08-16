@@ -37,34 +37,67 @@ function New-MCustomProfile {
     }
 }
 
-# Sets an execution trigger on the "SynchronizeTime" task and set "Windows Time" to auto start so the 
-# clock is synchronized with the Microsoft server when the machine is turned on
+# Register a task (SyncClock) on root folder to run "W32tm /resync" on startup
 function Set-MSynchronizeTimeTrigger {
+    # Set SynchronizeTime task to be executed at startup
     try {
-        Write-Progress -Activity "Creating Scheduled Task" -Status "Creating trigger..." -PercentComplete 0
+        Write-Progress -Activity "Creating SyncClock Task" -Status "Creating trigger..." -PercentComplete 0
         $TaskValues = @{
             TaskPath = "\Microsoft\Windows\Time Synchronization\"
             TaskName = "SynchronizeTime"
             Trigger  = New-ScheduledTaskTrigger -AtStartup
         }
 
-        Write-Progress -Activity "Creating Scheduled Task" -Status "Setting scheduled task..." -PercentComplete 100
+        Write-Progress -Activity "Creating SyncClock Task" -Status "Modifying (SynchronizeTime) task..." -PercentComplete 17
         Set-ScheduledTask @TaskValues | Out-Null
     }
     catch {
-        Write-Error "Failed to create the scheduled task: $_"
+        Write-Error "Failed to modify (SynchronizeTime) scheduled task: $_"
     }
 
+    # Set W32Time service to be initialized automatically and start it
     try {
-        Write-Progress -Activity "Enabling Windows Time" -Status "Setting W32Time startup type to automatic..." -PercentComplete 0
+        Write-Progress -Activity "Creating SyncClock Task" -Status "Setting W32Time startup type to automatic..." -PercentComplete 34
         Set-Service -Name "W32Time" -StartupType Automatic
-        Write-Progress -Activity "Disabling Window Search Indexer" -Status "Starting W32Time service..." -PercentComplete 100
+        Write-Progress -Activity "Creating SyncClock Task" -Status "Starting W32Time service..." -PercentComplete 51
         Start-Service -Name "W32Time"
     }
     catch {
         Write-Error "Failed to start windows time service: $_"
     }
 
+    # Check if the task already exists
+    if (Get-ScheduledTask -TaskName "SyncClock" -ErrorAction SilentlyContinue) {
+        Write-Host "Failed to register SyncClock task" -ForegroundColor Yellow
+        Write-Host "There is already a task named SyncClock in your system." -ForegroundColor Yellow
+
+        $confirmation = Read-Host "Do you want to replace it? (Y/N)"
+
+        if (-not($confirmation -eq 'Y' -or $confirmation -eq 'y')) {
+            return
+        }
+        Write-Progress -Activity "Creating SyncClock Task" -Status "Unregistering task..." -PercentComplete 68
+        Unregister-ScheduledTask -TaskName "SyncClock"
+    }
+
+    # Create a new task to synchronize the clock on every startup
+    Write-Progress -Activity "Creating SyncClock Task" -Status "Creating the task..." -PercentComplete 85
+    $TaskDetails = @{
+        TaskName = "SyncClock"
+        Trigger  = New-ScheduledTaskTrigger -AtStartup
+        User     = "Administrador"
+        Action   = New-ScheduledTaskAction -Execute "W32tm /resync"
+        RunLevel = "Highest"
+    }
+
+    #Register SyncClock Task
+    try {
+        Write-Progress -Activity "Creating SyncClock Task" -Status "Registering task..." -PercentComplete 100
+        Register-ScheduledTask @TaskDetails | Out-Null
+    }
+    catch {
+        Write-Error "Failed to register SyncClock task: $_"
+    }
 }
 
 # Disables the Windows Search indexer
@@ -114,18 +147,13 @@ function Disable-MDeliveryOptimization {
     try {
         Write-Progress -Activity "Disabling Delivery Optimization" -Status "Creating key..." -PercentComplete 0
         Set-Service -Name "DoSvc" -StartupType Manual
+        Write-Progress -Activity "Disabling Delivery Optimization" -Status "Adding entry..." -PercentComplete 50
+        Stop-Service -Name "DoSvc"
+        Write-Progress -Activity "Disabling Delivery Optimization" -Status "Deleting cache..." -PercentComplete 100
+        Delete-DeliveryOptimizationCache
     }
     catch {
         Write-Error "Failed to disable delivery optmization service: $_"
-        return
-    }
-
-    try {
-        Write-Progress -Activity "Disabling Delivery Optimization" -Status "Adding entry..." -PercentComplete 100
-        Stop-Service -Name "DoSvc"
-    }
-    catch {
-        Write-Error "Failed to stop delivery optimization service: $_"
     }
 }
 
