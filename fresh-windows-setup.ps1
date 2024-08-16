@@ -12,6 +12,31 @@ function Show-MWarning {
     }
 }
 
+# Create a custom powershell profile
+function New-MCustomProfile {
+    $ProfilePath = ".\PowerShell\Microsoft.PowerShell_profile.ps1"
+    $Destination = "$env:HOMEPATH\Documents\PowerShell"
+
+    if (-not(Test-Path $Destination)) {
+        Write-Progress -Activity "Creating Powershell Profile" -Status "Creating directories..." -PercentComplete 0
+        try {
+            mkdir $Destination | Out-Null
+        }
+        catch {
+            Write-Error "Failed to create profile folder: $_"
+            return
+        }
+    }
+    
+    Write-Progress -Activity "Creating Powershell Profile" -Status "Creating profile..." -PercentComplete 100
+    try {
+        Copy-Item -Path $ProfilePath -Destination $Destination
+    }
+    catch {
+        Write-Error "Error copying powershell profile: $_"
+    }
+}
+
 # Sets an execution trigger on the "SynchronizeTime" task and set "Windows Time" to auto start so the 
 # clock is synchronized with the Microsoft server when the machine is turned on
 function Set-MSynchronizeTimeTrigger {
@@ -104,35 +129,38 @@ function Disable-MDeliveryOptimization {
     }
 }
 
-# Create a custom powershell profile
-function New-MCustomProfile {
-    $ProfilePath = ".\PowerShell\Microsoft.PowerShell_profile.ps1"
-    $Destination = "$env:HOMEPATH\Documents\PowerShell"
-
-    if (-not(Test-Path $Destination)) {
-        Write-Progress -Activity "Creating Powershell Profile" -Status "Creating directories..." -PercentComplete 0
-        try {
-            mkdir $Destination | Out-Null
-        }
-        catch {
-            Write-Error "Failed to create profile folder: $_"
-            return
-        }
-    }
-    
-    Write-Progress -Activity "Creating Powershell Profile" -Status "Creating profile..." -PercentComplete 100
+# Disables Green Ethernet and EEE from the Ethernet adapter as way to prevent connection performance issues
+function Disable-MGreenEthernetAndEEE {
     try {
-        Copy-Item -Path $ProfilePath -Destination $Destination
+        $adapterProperties = Get-NetAdapterAdvancedProperty -Name "Ethernet"
+
+        if ($adapterProperties | Where-Object { $_.RegistryKeyword -eq "EnableGreenEthernet" }) {
+            Write-Progress -Activity "Disabling Green Ethernet and EEE" -Status "Disabling Green Ethernet..." -PercentComplete 0
+            Set-NetAdapterAdvancedProperty -Name "Ethernet" -RegistryKeyword "EnableGreenEthernet" -RegistryValue 0 | Out-Null
+        }
+        else {
+            Write-Host "Green Ethernet property not found on the adapter."
+        }
+
+        if ($adapterProperties | Where-Object { $_.RegistryKeyword -eq "EEE" }) {
+            Write-Progress -Activity "Disabling Green Ethernet and EEE" -Status "Disabling EEE..." -PercentComplete 100
+            Set-NetAdapterAdvancedProperty -Name "Ethernet" -RegistryKeyword "EEE" -RegistryValue 0 | Out-Null
+        }
+        else {
+            Write-Host "EEE property not found on the adapter."
+        }
     }
     catch {
-        Write-Error "Error copying powershell profile: $_"
+        Write-Error "Failed to disable Green Ethernet and EEE: $_"
     }
 }
 
 ############ MAIN ############
 # Function calls
 Show-MWarning
+
+New-MCustomProfile
 Disable-MBingSearch
 Set-MSynchronizeTimeTrigger
 Disable-MWSearchIndexer
-New-MCustomProfile
+Disable-MGreenEthernetAndEEE
