@@ -37,6 +37,31 @@ function New-MCustomProfile {
     }
 }
 
+# Create a custom powershell profile
+function New-MCustomProfile {
+    $ProfilePath = ".\PowerShell\Microsoft.PowerShell_profile.ps1"
+    $Destination = "$env:HOMEPATH\Documents\PowerShell"
+
+    if (-not(Test-Path $Destination)) {
+        Write-Progress -Activity "Creating Powershell Profile" -Status "Creating directories..." -PercentComplete 0
+        try {
+            mkdir $Destination | Out-Null
+        }
+        catch {
+            Write-Error "Failed to create profile folder: $_"
+            return
+        }
+    }
+    
+    Write-Progress -Activity "Creating Powershell Profile" -Status "Creating profile..." -PercentComplete 100
+    try {
+        Copy-Item -Path $ProfilePath -Destination $Destination
+    }
+    catch {
+        Write-Error "Error copying powershell profile: $_"
+    }
+}
+
 # Sets an execution trigger on the "SynchronizeTime" task and set "Windows Time" to auto start so the 
 # clock is synchronized with the Microsoft server when the machine is turned on
 function Set-MSynchronizeTimeTrigger {
@@ -152,6 +177,7 @@ function Disable-MGreenEthernetAndEEE {
     }
     catch {
         Write-Error "Failed to disable Green Ethernet and EEE: $_"
+        Write-Error "Failed to disable Green Ethernet and EEE: $_"
     }
 }
 
@@ -160,7 +186,10 @@ function Disable-MGreenEthernetAndEEE {
 Show-MWarning
 
 New-MCustomProfile
+
+New-MCustomProfile
 Disable-MBingSearch
 Set-MSynchronizeTimeTrigger
 Disable-MWSearchIndexer
+Disable-MGreenEthernetAndEEE
 Disable-MGreenEthernetAndEEE
