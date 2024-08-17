@@ -37,6 +37,11 @@ function New-MCustomProfile {
     }
 }
 
+# Disable hibernate and consequently fast startup so tasks triggered at startup can be executed correctly
+function Disable-MFastStartup {
+    powercfg -h off
+}
+
 # Register a task (SyncClock) on root folder to run "W32tm /resync" on startup
 function Set-MSynchronizeTimeTrigger {
     # Set SynchronizeTime task to be executed at startup
@@ -84,10 +89,11 @@ function Set-MSynchronizeTimeTrigger {
     Write-Progress -Activity "Creating SyncClock Task" -Status "Creating the task..." -PercentComplete 85
     $TaskDetails = @{
         TaskName = "SyncClock"
-        Trigger  = New-ScheduledTaskTrigger -AtStartup
-        User     = "Administrador"
-        Action   = New-ScheduledTaskAction -Execute "W32tm /resync"
+        Trigger  = New-ScheduledTaskTrigger -AtLogOn
+        User     = $env:USERNAME
+        Action   = New-ScheduledTaskAction -Execute "W32tm" -Argument "/resync"
         RunLevel = "Highest"
+        Settings = New-ScheduledTaskSettingsSet -RunOnlyIfNetworkAvailable -Compatibility Win8
     }
 
     #Register SyncClock Task
@@ -189,6 +195,7 @@ Show-MWarning
 
 New-MCustomProfile
 Disable-MBingSearch
+Disable-MFastStartup
 Set-MSynchronizeTimeTrigger
 Disable-MWSearchIndexer
 Disable-MGreenEthernetAndEEE
