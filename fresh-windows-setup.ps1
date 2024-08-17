@@ -148,21 +148,6 @@ function Disable-MBingSearch {
     }
 }
 
-# Disables delivery optimization
-function Disable-MDeliveryOptimization {
-    try {
-        Write-Progress -Activity "Disabling Delivery Optimization" -Status "Creating key..." -PercentComplete 0
-        Set-Service -Name "DoSvc" -StartupType Manual
-        Write-Progress -Activity "Disabling Delivery Optimization" -Status "Adding entry..." -PercentComplete 50
-        Stop-Service -Name "DoSvc"
-        Write-Progress -Activity "Disabling Delivery Optimization" -Status "Deleting cache..." -PercentComplete 100
-        Delete-DeliveryOptimizationCache
-    }
-    catch {
-        Write-Error "Failed to disable delivery optmization service: $_"
-    }
-}
-
 # Disables Green Ethernet and EEE from the Ethernet adapter as way to prevent connection performance issues
 function Disable-MGreenEthernetAndEEE {
     try {
@@ -189,6 +174,11 @@ function Disable-MGreenEthernetAndEEE {
     }
 }
 
+# Install predefined applications
+function Install-MApplications {
+    winget import .\winget-configuration\apps.json
+}
+
 ############ MAIN ############
 # Function calls
 Show-MWarning
@@ -199,3 +189,4 @@ Disable-MFastStartup
 Set-MSynchronizeTimeTrigger
 Disable-MWSearchIndexer
 Disable-MGreenEthernetAndEEE
+Install-MApplications
