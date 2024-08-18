@@ -174,6 +174,21 @@ function Disable-MGreenEthernetAndEEE {
     }
 }
 
+# Configure cloudflare dns on Ethernet interface
+function Set-MCustomDns {
+    $DnsOptions = @{
+        InterfaceAlias  = "Ethernet"
+        ServerAddresses = ("1.1.1.2", "1.0.0.2", "2606:4700:4700::1112", "2606:4700:4700::1002")
+    }
+    Write-Progress -Activity "Configuring DNS" -Status "Setting custom DNS..." -PercentComplete 100
+    try {
+        Set-DnsClientServerAddress $DnsOptions
+    }
+    catch {
+        Write-Error "Failed to set custom DNS resolver"
+    }
+}
+
 # Install predefined applications
 function Install-MApplications {
     winget import .\winget-configuration\apps.json
@@ -189,4 +204,5 @@ Disable-MFastStartup
 Set-MSynchronizeTimeTrigger
 Disable-MWSearchIndexer
 Disable-MGreenEthernetAndEEE
+Set-MCustomDns
 Install-MApplications
